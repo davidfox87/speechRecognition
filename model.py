@@ -1,51 +1,14 @@
 import keras
 from keras.models import Model
 from keras.layers import Input, Activation, Conv1D
-from keras.layers import Dense, Flatten, BatchNormalization, LSTM, TimeDistributed, Dropout, MaxPooling1D, SimpleRNN
+from keras.layers import Dense, Bidirectional, BatchNormalization, LSTM, TimeDistributed, Dropout, MaxPooling1D, SimpleRNN
 from keras import backend as K
 from keras.layers import (Input, Lambda)
 from keras.optimizers import SGD
 from keras.callbacks import ModelCheckpoint
 import os
 import pickle
-
-
-def cnn_lstm_model(input_dim, filters, kernel_size, conv_stride,
-	conv_border_mode, units, n_outputs=29):
-	""" Build a recurrent + convolutional network for speech
-	"""
-	# Main acoustic input
-	input_data = Input(name='the_input', shape=(None, input_dim))
-
-	# Add convolutional layers
-	# TimeDistributed applies a layer to every temporal slice of an input
-	# i.e. each time slice of the input spectrogram
-	x = Conv1D(filters, kernel_size,
-					 strides=conv_stride,
-					 padding=conv_border_mode,
-					 activation='relu',
-					 name='conv1d')(input_data)
-
-	# Add batch normalization...not clear what this does yet
-	x = BatchNormalization(name='bn_conv_1d')(x)
-
-	x = LSTM(units)(x)
-
-	x = TimeDistributed(Dense(n_outputs))(x)
-
-	# Add softmax activation layer
-	predictions = Activation('softmax', name='softmax')(x)
-	# Specify the model
-	model = Model(inputs=input_data, outputs=predictions)
-	model.output_length = lambda x: cnn_output_length(
-		x, kernel_size, conv_border_mode, conv_stride)
-
-	print(model.summary())
-	return x
-
-
-
-
+from keras.layers import Reshape
 
 def cnn_output_length(input_length, filter_size, border_mode, stride,
 					   dilation=1):
@@ -84,8 +47,10 @@ def cnn_rnn_model(input_dim, filters, kernel_size, conv_stride,
 	# Add batch normalization
 	bn_cnn = BatchNormalization(name='bn_conv_1d')(conv_1d)
 	# Add a recurrent layer
-	simp_rnn = SimpleRNN(units, activation='relu',
-		return_sequences=True, name='rnn')(bn_cnn)
+	#simp_rnn = SimpleRNN(units, activation='relu',
+	#					return_sequences=True, name='rnn')(bn_cnn)
+
+	simp_rnn = Bidirectional(LSTM(units, return_sequences=True, dropout=0.2))(bn_cnn)
 	# Add batch normalization
 	bn_rnn = BatchNormalization()(simp_rnn)
 	# Add a TimeDistributed(Dense(output_dim)) layer
@@ -156,6 +121,8 @@ def train_model(input_to_softmax,
 					 epochs=epochs,
 					 callbacks=[checkpointer],
 					 steps_per_epoch=steps_per_epoch,
+					 validation_data=validation_generator.next(),
+					 validation_steps=validation_steps,
 					 verbose=verbose)
 
 	# save model loss

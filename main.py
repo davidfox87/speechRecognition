@@ -1,5 +1,5 @@
 
-from model import cnn_lstm_model, cnn_rnn_model, train_model
+from model import  cnn_rnn_model, train_model
 from data_generator import AudioGenerator
 from glob import glob
 import numpy as np
